@@ -1,3 +1,7 @@
+//! A cross-platform graphics and compute library based on WebGPU.
+//!
+//! `wgpu` is a high-level graphics API based on
+
 use arrayvec::ArrayVec;
 
 use std::ffi::CString;
@@ -66,49 +70,89 @@ struct Temp {
     command_buffers: Vec<wgn::CommandBufferId>,
 }
 
+/// A handle to an active `wgpu` instance.
+///
+/// An `Instance` represents the entire context of a running `wgpu` instance. The `Instance`
+/// allows the querying of `Adapter` objects and the creation of `Surface` objects.
 pub struct Instance {
     id: wgn::InstanceId,
 }
 
+/// A handle to a physical graphics and/or compute device.
+///
+/// An `Adapter` can be used to open a connection to the corresponding device on the host system,
+/// yielding a `Device` object.
 pub struct Adapter {
     id: wgn::AdapterId,
 }
 
+/// An open connection to a graphics and/or compute device.
+///
+/// The `Device` is the responsible for the creation of most rendering and compute resources, as
+/// well as exposing `Queue` objects.
 pub struct Device {
     id: wgn::DeviceId,
     temp: Temp,
 }
 
+/// A handle to a GPU-accessible buffer.
 pub struct Buffer {
     id: wgn::BufferId,
 }
 
+/// A handle to a texture on the GPU.
 pub struct Texture {
     id: wgn::TextureId,
     owned: bool,
 }
 
+/// A handle to a texture view.
+///
+/// A `TextureView` object describes a texture and associated metadata needed by a `RenderPipeline`.
 pub struct TextureView {
     id: wgn::TextureViewId,
     owned: bool,
 }
 
+/// A handle to a sampler.
+///
+/// A `Sampler` object defines how a pipeline will sample from a `TextureView`. Samplers define
+/// image filters (including anisotropy) and address (wrapping) modes, among other things. See
+/// the documentation for `SamplerDescriptor` for more information.
 pub struct Sampler {
     id: wgn::SamplerId,
 }
 
+/// A handle to a presentable surface.
+///
+/// A `Surface` represents a platform-specific surface (e.g. a window) to which rendered images may
+/// be presented. A `Surface` may be created with `Instance::create_surface()`.
 pub struct Surface {
     id: wgn::SurfaceId,
 }
 
+/// A handle to a swap chain.
+///
+/// A `SwapChain` represents the image or series of images that will be presented to a `Surface`.
+/// A `SwapChain` may be created with `Device::create_swap_chain()`.
 pub struct SwapChain {
     id: wgn::SwapChainId,
 }
 
+/// An opaque handle to a binding group layout.
+///
+/// A `BindGroupLayout` is a handle to the GPU-side layout of a binding group. It can be used to
+/// create a `BindGroupDescriptor` object, which in turn can be used to create a `BindGroup` object
+/// with `Device::create_bind_group()`.
 pub struct BindGroupLayout {
     id: wgn::BindGroupLayoutId,
 }
 
+/// An opaque handle to a binding group.
+///
+/// A `BindGroup` represents a group of bindings and the resources that will be bound to them. It
+/// can be created with `Device::create_bind_group()`. A `BindGroup` can be bound to a particular
+/// `RenderPass` with `RenderPass::set_bind_group()`.
 pub struct BindGroup {
     id: wgn::BindGroupId,
 }
@@ -119,6 +163,11 @@ impl Drop for BindGroup {
     }
 }
 
+/// A handle to a compiled shader module.
+///
+/// A `ShaderModule` represents a compiled shader module on the GPU. It can be created by passing
+/// valid SPIR-V source code to `Device::create_shader_module()`. Shader modules are used to define
+/// programmable stages of a pipeline.
 pub struct ShaderModule {
     id: wgn::ShaderModuleId,
 }
@@ -127,6 +176,10 @@ pub struct PipelineLayout {
     id: wgn::PipelineLayoutId,
 }
 
+/// A handle to a rendering (graphics) pipeline.
+///
+/// A `RenderPipeline` object represents a graphics pipeline and its stages, bindings, vertex buffers
+/// and targets. A `RenderPipeline` may be created with `Device::create_render_pipeline()`.
 pub struct RenderPipeline {
     id: wgn::RenderPipelineId,
 }
@@ -153,11 +206,15 @@ pub struct ComputePass<'a> {
     _parent: &'a mut CommandEncoder,
 }
 
+/// A handle to a command queue on a device.
+///
+/// A `Queue` accepts and executes finished `CommandBuffer` objects.
 pub struct Queue<'a> {
     id: wgn::QueueId,
     temp: &'a mut Temp,
 }
 
+/// A resource that can be bound to a pipeline.
 pub enum BindingResource<'a> {
     Buffer {
         buffer: &'a Buffer,
@@ -167,11 +224,18 @@ pub enum BindingResource<'a> {
     TextureView(&'a TextureView),
 }
 
+/// A bindable resource and the slot to bind it to.
+///
+///
 pub struct Binding<'a> {
     pub binding: u32,
     pub resource: BindingResource<'a>,
 }
 
+/// A description of a series of bindings.
+///
+/// A `BindGroupLayoutDescriptor` can be passed to `Device::create_bind_group_layout()` to obtain a
+/// `BindGroupLayout`.
 pub struct BindGroupLayoutDescriptor<'a> {
     pub bindings: &'a [BindGroupLayoutBinding],
 }
@@ -292,12 +356,22 @@ where
 }
 
 impl Instance {
+    /// Create a new `Instance` object.
     pub fn new() -> Self {
         Instance {
             id: wgn::wgpu_create_instance(),
         }
     }
 
+    /// Retrieve an `Adapter` which matches the given descriptor.
+    ///
+    /// If there are no available adapters matching `desc`, this function will return another
+    /// adapter.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are no available adapters. This will occur if none of the graphics backends
+    /// are enabled.
     pub fn get_adapter(&self, desc: &AdapterDescriptor) -> Adapter {
         Adapter {
             id: wgn::wgpu_instance_get_adapter(self.id, desc),
